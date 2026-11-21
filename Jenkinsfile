@@ -1,43 +1,30 @@
 pipeline {
     agent any
-
     environment {
-        IMAGE_NAME     = 'jenkins-flask-api'
-        CONTAINER_NAME = 'flask-api'
-        APP_PORT       = '5000'
+        DOCKER_ID    = "dstdockerhub"
+        DOCKER_IMAGE = "datascientestapi"
+        DOCKER_TAG   = "v.${BUILD_ID}.0"
     }
-
     stages {
-        stage('Build') {
+        stage('Building') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -t ${IMAGE_NAME}:latest .'
+                sh 'docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .'
             }
         }
-
-        stage('Test') {
+        stage('Testing') {
             steps {
-                sh 'docker run --rm ${IMAGE_NAME}:${BUILD_NUMBER} python -m unittest -v'
+                sh 'docker run --rm $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG python -m unittest -v'
             }
         }
-
-        stage('Deploy') {
+        stage('Deploying') {
             steps {
                 sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:5000 ${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker rm -f flask-api || true
+                    docker run -d --name flask-api -p 5000:5000 $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
                     sleep 3
-                    curl -fsS http://localhost:${APP_PORT}/api/hello
+                    curl -fsS http://localhost:5000/api/hello
                 '''
             }
-        }
-    }
-
-    post {
-        success {
-            echo "API deployee : http://<IP de la VM>:${APP_PORT}/api/hello"
-        }
-        failure {
-            echo 'Le pipeline a echoue : voir les logs de l etape en rouge.'
         }
     }
 }
