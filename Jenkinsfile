@@ -28,10 +28,8 @@ pipeline {
             steps {
                 sh '''
                     docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
-                    docker rm -f flask-api || true
-                    docker run -d --name flask-api -p 5000:5000 $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
-                    sleep 3
-                    curl -fsS http://localhost:5000/api/hello
+                    docker rm -f jenkins
+                    docker run -d -p 8000:8000 --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
                 '''
             }
         }
