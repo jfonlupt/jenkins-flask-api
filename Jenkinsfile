@@ -8,17 +8,26 @@ pipeline {
     stages {
         stage('Building') {
             steps {
-                sh 'docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .'
+                // Ubuntu 24.04 interdit "pip install" hors environnement virtuel (PEP 668)
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install -r requirements.txt
+                '''
             }
         }
         stage('Testing') {
             steps {
-                sh 'docker run --rm $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG python -m unittest -v'
+                sh '''
+                    . venv/bin/activate
+                    python -m unittest
+                '''
             }
         }
         stage('Deploying') {
             steps {
                 sh '''
+                    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
                     docker rm -f flask-api || true
                     docker run -d --name flask-api -p 5000:5000 $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
                     sleep 3
