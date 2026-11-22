@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_ID    = "dstdockerhub"
+        DOCKER_ID    = "jfonlupt"            // ton compte Docker Hub (credential DOCKER_HUB_PASS)
         DOCKER_IMAGE = "datascientestapi"
         DOCKER_TAG   = "v.${BUILD_ID}.0"
     }
@@ -26,12 +26,48 @@ pipeline {
         }
         stage('Deploying') {
             steps {
-                sh '''
-                    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
-                    docker rm -f jenkins
-                    docker run -d -p 8000:8000 --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
-                '''
+                script {
+                    sh '''
+                        docker rm -f jenkins
+                        docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
+                        docker run -d -p 8000:8000 --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                    '''
+                }
             }
+        }
+        stage('User acceptance') {
+            input {
+                message "Voulez-vous déployer le code sur la branche main ?"
+                ok "Oui"
+            }
+            steps {
+                echo "Déploiement sur main accepté."
+            }
+        }
+        stage('Pushing and Merging') {
+            parallel {
+                stage('Pushing') {
+                    environment {
+                        DOCKERHUB_CREDENTIALS = credentials('DOCKER_HUB_PASS')
+                    }
+                    steps {
+                        sh '''
+                            echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                            docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                        '''
+                    }
+                }
+                stage('Merging') {
+                    steps {
+                        echo 'Merging done'
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            sh 'docker logout'
         }
     }
 }
